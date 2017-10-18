@@ -1,0 +1,10 @@
+                                 -*-  mode: restclient  -*-
+
+:host = http://localhost:9001
+
+
+# In the beginning, there was darkness.
+GET :host/
+
+
+# Challenge 1
