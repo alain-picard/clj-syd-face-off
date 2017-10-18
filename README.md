@@ -23,6 +23,36 @@ Yes, it's...  =The great face-off!!!=
 6. Help your fellow clojurians to make sensible tooling choices.
 
 
+## Challenges
+
+1. Verify that GET / works.  No points for this one!
+
+2. Implement a simple in memory database, like so:
+  PUT /db/foo
+  "some body text"
+
+  GET /db/foo
+  ==> "some body text"
+
+  DELETE /db/foo
+
+  GET /db/foo
+  404 not found
+
+3. Extend #2 as follows:
+
+  PUT /db
+  Content-Type: application/json
+  {"foo" : "some value 1", "bar" : "some other val"}
+
+
+  GET /db/bar
+  "some other val"
+
+  i.e. receive a JSON encoded request, and store the entire
+  map as a list of values received.
+
+
 ## This repo:
 
 This repo was created by doing a
