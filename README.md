@@ -52,7 +52,17 @@ Yes, it's...  =The great face-off!!!=
   i.e. receive a JSON encoded request, and store the entire
   map as a list of values received.
 
+4. GET Routing by type:
 
+    Add a /id route to the webapp that dispatches on the result of a function call
+
+    i.e. the id could be for a organisation or a person but the handler is different for each.
+    the route should query the record to determine the type and then dispatch to a handler based on that type
+
+5. Developer diagnostic tool:
+
+    * add data to the request that lists all the middlewares and how long each took to run.
+    * bonus points if it can be appended to the footer of the page in a list
 
 ## This repo:
 
