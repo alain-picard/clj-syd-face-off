@@ -56,8 +56,10 @@ Yes, it's...  =The great face-off!!!=
 
     Add a /id route to the webapp that dispatches on the result of a function call
 
-    i.e. the id could be for a organisation or a person but the handler is different for each.
+    i.e. the id could be for an "organisation" or a "person" but the handler is different for each.
     the route should query the record to determine the type and then dispatch to a handler based on that type
+
+    e.g. /1234 should call a get-org fn and /4567 should call a get-person fn
 
 5. Developer diagnostic tool:
 
