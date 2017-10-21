@@ -6,7 +6,17 @@
     [io.pedestal.http.body-params :as body-params]
     [ring.util.response :as ring-resp]
     [hiccup.core :refer [html]]
-    [io.pedestal.interceptor :as interceptor]))
+    [io.pedestal.interceptor :as interceptor]
+    [org.httpkit.client :as http-client]
+    [cheshire.core :as json]))
+
+(comment
+  @(http-client/request {:url "http://localhost:8080/db/"})
+  @(http-client/request {:url     "http://localhost:8080/db"
+                         :method  :put
+                         :headers {"Content-Type" "application/json"}
+                         :body    (json/encode {"foo" "some value"
+                                                "bar" "some other val"})}))
 
 (defn about-page
   [request]
@@ -52,6 +62,19 @@
                    (route/url-for :db/list)
                    :moved-permanently)))
 
+(defn db-reset
+  [context]
+  (reset! (::db context)
+          (reduce-kv
+            (fn [m k v]
+              (assoc m (name k) v))
+            {}
+            (get-in context [:request :json-params])))
+  (assoc context :response
+                 (ring-resp/redirect
+                   (route/url-for :db/list)
+                   :moved-permanently)))
+
 (defn home-page
   [request]
   (ring-resp/response "Hello World!"))
@@ -74,6 +97,9 @@
       ["/about" {:get about-page}]
       ["/db"
        ^:interceptors [(database-interceptor database)]
+       {:put [:db/reset (interceptor/interceptor
+                          {:name  ::db-reset
+                           :enter db-reset})]}
        ["/"
         {:get [:db/list (interceptor/interceptor
                           {:name  ::db-list
