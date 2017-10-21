@@ -97,13 +97,12 @@
       ["/about" {:get about-page}]
       ["/db"
        ^:interceptors [(database-interceptor database)]
-       {:put [:db/reset (interceptor/interceptor
+       {:get [:db/list (interceptor/interceptor
+                         {:name  ::db-list
+                          :enter db-list-enter})]
+        :put [:db/reset (interceptor/interceptor
                           {:name  ::db-reset
                            :enter db-reset})]}
-       ["/"
-        {:get [:db/list (interceptor/interceptor
-                          {:name  ::db-list
-                           :enter db-list-enter})]}]
        ["/:id"
         {:get    [:db/record
                   (interceptor/interceptor
