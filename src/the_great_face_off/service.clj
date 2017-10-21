@@ -75,6 +75,38 @@
                    (route/url-for :db/list)
                    :moved-permanently)))
 
+(defn get-person
+  [context]
+  (assoc context :response
+                 (ring-resp/response
+                   "Person record")))
+
+(defn get-org
+  [context]
+  (assoc context :response
+                 (ring-resp/response
+                   "Organisation record")))
+
+(def db-typed
+  (interceptor/interceptor
+    {:name  ::db-record-typed
+     :enter (fn [context]
+              (let [id (get-in context [:request :path-params :id])
+                    record-type (get {"1234" :person
+                                      "4567" :organisation}
+                                     id)]
+                (if-let [handler (get {:person       get-person
+                                       :organisation get-org}
+                                      record-type)]
+                  (assoc context ::typed-handler handler)
+                  context)))
+     :leave (fn [context]
+              (if-let [handle (::typed-handler context)]
+                (handle context)
+                (assoc context :response
+                               (ring-resp/not-found
+                                 "No typed record found"))))}))
+
 (defn home-page
   [request]
   (ring-resp/response "Hello World!"))
@@ -95,6 +127,11 @@
       ^:interceptors [(body-params/body-params)
                       http/html-body]
       ["/about" {:get about-page}]
+
+      ["/:id"
+       ^:constraints {:id #"[0-9]+"}
+       {:get [:db/record-typed db-typed]}]
+
       ["/db"
        ^:interceptors [(database-interceptor database)]
        {:get [:db/list (interceptor/interceptor
@@ -111,7 +148,9 @@
          :delete [:db/delete
                   (interceptor/interceptor
                     {:name  ::db-delete
-                     :enter db-delete-enter})]}]]]]])
+                     :enter db-delete-enter})]}]]
+
+      ]]])
 
 
 ;; Consumed by the-great-face-off.server/create-server
@@ -123,6 +162,7 @@
               ;; default interceptors will be ignored.
               ;; ::http/interceptors []
               ::http/routes            routes
+              ::http/router            :linear-search
 
               ;; Uncomment next line to enable CORS support, add
               ;; string(s) specifying scheme, host and port for
