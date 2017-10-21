@@ -1,8 +1,12 @@
 (ns the-great-face-off.service
-  (:require [io.pedestal.http :as http]
-            [io.pedestal.http.route :as route]
-            [io.pedestal.http.body-params :as body-params]
-            [ring.util.response :as ring-resp]))
+  (:require
+    [clojure.pprint :refer [pprint]]
+    [io.pedestal.http :as http]
+    [io.pedestal.http.route :as route]
+    [io.pedestal.http.body-params :as body-params]
+    [ring.util.response :as ring-resp]
+    [hiccup.core :refer [html]]
+    [io.pedestal.interceptor :as interceptor]))
 
 (defn about-page
   [request]
@@ -10,29 +14,79 @@
                               (clojure-version)
                               (route/url-for ::about-page))))
 
+(defn db-list-enter
+  [context]
+  (assoc context :response
+                 (ring-resp/response
+                   (html
+                     (let [db @(::db context)]
+                       [:div
+                        [:h1 {} "Database List"]
+                        (for [k (keys db)]
+                          [:div {}
+                           [:a {:href (route/url-for :db/record :params {:id k})}
+                            (get db k)]
+                           [:form {:action (route/url-for :db/delete :params {:id      k
+                                                                              :_method "delete"})
+                                   :method "POST"}
+                            [:button {:type "submit"} "Delete"]]])])))))
+
+(defn db-record-enter
+  [context]
+  (assoc context :response
+                 (let [db @(::db context)
+                       id (get-in context [:request :path-params :id])]
+                   (if-let [v (get db id)]
+                     (ring-resp/response
+                       (html
+                         [:div
+                          [:h1 {} (get db id)]]))
+                     (ring-resp/not-found "No record found")))))
+
+(defn db-delete-enter
+  [context]
+  (swap! (::db context)
+         dissoc (get-in context [:request :path-params :id]))
+  (assoc context :response
+                 (ring-resp/redirect
+                   (route/url-for :db/list)
+                   :moved-permanently)))
+
 (defn home-page
   [request]
   (ring-resp/response "Hello World!"))
 
-;; Defines "/" and "/about" routes with their associated :get handlers.
-;; The interceptors defined after the verb map (e.g., {:get home-page}
-;; apply to / and its children (/about).
-(def common-interceptors [(body-params/body-params) http/html-body])
+(defonce database (atom {"foo" "some value 1"
+                         "bar" "another value 2"}))
 
-;; Tabular routes
-(def routes #{["/" :get (conj common-interceptors `home-page)]
-              ["/about" :get (conj common-interceptors `about-page)]})
-
-;; Map-based routes
-;(def routes `{"/" {:interceptors [(body-params/body-params) http/html-body]
-;                   :get home-page
-;                   "/about" {:get about-page}}})
+(defn database-interceptor
+  [db]
+  (interceptor/interceptor
+    {:name  ::load-database
+     :enter (fn [context]
+              (assoc context ::db db))}))
 
 ;; Terse/Vector-based routes
-;(def routes
-;  `[[["/" {:get home-page}
-;      ^:interceptors [(body-params/body-params) http/html-body]
-;      ["/about" {:get about-page}]]]])
+(def routes
+  `[[["/" {:get home-page}
+      ^:interceptors [(body-params/body-params)
+                      http/html-body]
+      ["/about" {:get about-page}]
+      ["/db"
+       ^:interceptors [(database-interceptor database)]
+       ["/"
+        {:get [:db/list (interceptor/interceptor
+                          {:name  ::db-list
+                           :enter db-list-enter})]}]
+       ["/:id"
+        {:get    [:db/record
+                  (interceptor/interceptor
+                    {:name  ::db-record
+                     :enter db-record-enter})]
+         :delete [:db/delete
+                  (interceptor/interceptor
+                    {:name  ::db-delete
+                     :enter db-delete-enter})]}]]]]])
 
 
 ;; Consumed by the-great-face-off.server/create-server
